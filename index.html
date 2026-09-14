@@ -1,0 +1,882 @@
+<!doctype html>
+<html lang="ca">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador ANOVA d’un factor</title>
+<style>
+  :root{
+    --bg:#ffffff;
+    --text:#1f2937;
+    --muted:#667085;
+    --line:#d0d5dd;
+    --soft:#f8fafc;
+    --accent:#2563eb;
+    --accent-soft:#eff6ff;
+    --good:#166534;
+    --good-bg:#f0fdf4;
+    --warn:#92400e;
+    --warn-bg:#fffbeb;
+    --a:#2563eb;
+    --b:#059669;
+    --c:#dc2626;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    font-family:Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background:var(--bg);
+    color:var(--text);
+  }
+  .wrap{
+    max-width:1180px;
+    margin:0 auto;
+    padding:26px 24px 48px;
+  }
+  header{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:24px;
+    margin-bottom:16px;
+  }
+  h1{
+    margin:0 0 6px;
+    font-size:clamp(28px,4vw,44px);
+    font-weight:760;
+    letter-spacing:-.03em;
+  }
+  .subtitle{
+    margin:0;
+    color:var(--muted);
+    font-size:17px;
+    line-height:1.5;
+  }
+  .alpha{
+    flex:0 0 auto;
+    display:flex;
+    align-items:center;
+    gap:9px;
+    background:var(--accent-soft);
+    color:#1d4ed8;
+    border:1px solid #bfdbfe;
+    border-radius:999px;
+    padding:7px 9px 7px 12px;
+    font-size:14px;
+    font-weight:650;
+  }
+  .alpha select{
+    border:1px solid #93c5fd;
+    background:white;
+    color:#1d4ed8;
+    border-radius:999px;
+    padding:5px 9px;
+    font:inherit;
+    font-weight:700;
+    cursor:pointer;
+  }
+
+  .section-label{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    margin:8px 0 10px;
+    font-size:13px;
+    font-weight:800;
+    letter-spacing:.04em;
+    text-transform:uppercase;
+    color:#475467;
+  }
+  .section-label .n{
+    display:inline-grid;
+    place-items:center;
+    width:26px;height:26px;
+    border-radius:50%;
+    background:#eef2f6;
+    color:#344054;
+  }
+
+  .idea{
+    margin:0 0 18px;
+    padding:14px 16px;
+    border-left:4px solid var(--accent);
+    background:#f8fbff;
+    border-radius:10px;
+    font-size:16px;
+    line-height:1.5;
+  }
+
+  .grid{
+    display:grid;
+    grid-template-columns:minmax(0,1.55fr) minmax(300px,.78fr);
+    gap:18px;
+  }
+  .card{
+    border:1px solid var(--line);
+    border-radius:16px;
+    background:white;
+    overflow:hidden;
+  }
+  .card-head{
+    padding:14px 18px 10px;
+    border-bottom:1px solid #eaecf0;
+  }
+  .card-head h2{margin:0;font-size:18px}
+  .card-head p{margin:4px 0 0;color:var(--muted);font-size:14px}
+  #plot{
+    width:100%;
+    height:400px;
+    display:block;
+    background:white;
+  }
+  .legend{
+    display:flex;flex-wrap:wrap;gap:14px;
+    padding:0 18px 14px;
+    color:var(--muted);font-size:13px;
+  }
+  .legend span{display:inline-flex;align-items:center;gap:7px}
+  .dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+  .dash{width:22px;border-top:2px dashed #7f8c8d;display:inline-block}
+
+  .side{
+    padding:16px;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+  }
+  .result{
+    border-radius:14px;
+    padding:15px;
+    background:var(--soft);
+    border:1px solid #e4e7ec;
+  }
+  .label{color:var(--muted);font-size:13px}
+  .big{
+    font-size:34px;font-weight:760;letter-spacing:-.03em;
+  }
+  .pair{
+    display:grid;grid-template-columns:1fr 1fr;gap:9px;
+  }
+  .mini{
+    background:white;border:1px solid #e4e7ec;border-radius:12px;padding:11px;
+  }
+  .mini .v{font-weight:720;font-size:20px;margin-top:2px}
+  .means-mini{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:8px;
+  }
+  .mean-mini{
+    text-align:center;
+    border:1px solid #e4e7ec;border-radius:10px;padding:9px 6px;background:white;
+  }
+  .mean-mini .v{font-weight:760;font-size:18px}
+  .decision{
+    border-radius:14px;padding:13px 15px;line-height:1.42;font-size:15px;border:1px solid;
+  }
+  .decision.sig{background:var(--good-bg);border-color:#bbf7d0;color:var(--good)}
+  .decision.nsig{background:var(--warn-bg);border-color:#fde68a;color:var(--warn)}
+  .decision strong{display:block;margin-bottom:3px}
+  .bars{display:grid;gap:9px}
+  .bar-row{
+    display:grid;grid-template-columns:114px 1fr 58px;gap:9px;align-items:center;font-size:13px;
+  }
+  .track{height:10px;background:#eef2f6;border-radius:999px;overflow:hidden}
+  .fill{height:100%;border-radius:999px;background:#475467}
+
+  .controls{
+    margin-top:16px;
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:14px;
+    background:#fff;
+  }
+  .controls-top{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+    margin-bottom:10px;
+  }
+  .controls h2{margin:0;font-size:18px}
+  .preset-row{display:flex;flex-wrap:wrap;gap:7px}
+  button{
+    appearance:none;border:1px solid #cfd4dc;background:white;color:var(--text);
+    border-radius:10px;padding:9px 12px;font-size:13px;font-weight:650;cursor:pointer;
+  }
+  button:hover{background:#f9fafb}
+  button:focus-visible,input:focus-visible,select:focus-visible{
+    outline:3px solid #bfdbfe;outline-offset:2px;
+  }
+  .groups{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:10px;
+  }
+  .group{
+    border:1px solid #e4e7ec;border-radius:12px;padding:11px 12px;background:#fff;
+  }
+  .group-title{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    margin-bottom:7px;font-weight:740;
+  }
+  .chip{
+    font-size:12px;font-weight:700;border-radius:999px;padding:3px 8px;color:white;
+  }
+  .slider{margin:9px 0}
+  .slider label{
+    display:flex;justify-content:space-between;gap:12px;
+    font-size:13px;color:var(--muted);margin-bottom:4px;
+  }
+  .slider output{color:var(--text);font-weight:700}
+  input[type="range"]{width:100%}
+
+  .divider{
+    margin:34px 0 18px;
+    border:0;border-top:1px solid #e4e7ec;
+  }
+
+  .module-intro{
+    display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap;
+    margin-bottom:12px;
+  }
+  .module-intro h2{
+    margin:0 0 5px;font-size:26px;letter-spacing:-.02em;
+  }
+  .module-intro p{margin:0;color:var(--muted);line-height:1.5;max-width:760px}
+
+  .notation{
+    display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:12px;
+  }
+  .notation .box{
+    border:1px solid #e4e7ec;border-radius:11px;padding:10px 11px;background:#fafafa;
+  }
+  .notation .sym{
+    font-family:"Cambria Math","STIX Two Math","Times New Roman",serif;
+    font-size:20px;font-weight:700;
+  }
+  .notation .txt{color:var(--muted);font-size:12px;margin-top:2px}
+
+  .calc-steps{
+    display:grid;gap:12px;
+  }
+  .step{
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:14px 15px;
+    background:white;
+  }
+  .step-title{
+    display:flex;align-items:center;gap:9px;
+    font-weight:760;margin-bottom:8px;font-size:16px;
+  }
+  .step-title .num{
+    display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;
+    background:#eef2f6;color:#344054;font-size:13px;
+  }
+
+  .eq{
+    font-family:"Cambria Math","STIX Two Math","Times New Roman",serif;
+    font-size:21px;
+    line-height:1.5;
+    color:#111827;
+    overflow-wrap:anywhere;
+  }
+  .eq small{font-size:.72em;color:#475467}
+  .frac{
+    display:inline-flex;flex-direction:column;vertical-align:middle;align-items:center;
+    line-height:1.05;margin:0 .15em;
+  }
+  .frac .top{padding:0 .18em .08em;border-bottom:1.5px solid currentColor}
+  .frac .bottom{padding:.08em .18em 0}
+  .sum{font-size:1.25em;vertical-align:-.05em}
+  .calc-row{
+    display:grid;grid-template-columns:1.15fr .85fr;gap:14px;align-items:start;
+  }
+  .explain{
+    color:#475467;font-size:14px;line-height:1.5;
+    padding-left:12px;border-left:3px solid #eaecf0;
+  }
+
+  .dynamic-boxes{
+    display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px;
+  }
+  .dyn{
+    background:#f8fafc;border:1px solid #e4e7ec;border-radius:10px;padding:9px 10px;
+  }
+  .dyn .k{color:var(--muted);font-size:11px}
+  .dyn .v{font-size:17px;font-weight:760;margin-top:1px}
+
+  .deviation-table{
+    width:100%;border-collapse:collapse;margin-top:9px;font-size:13px;
+  }
+  .deviation-table th,.deviation-table td{
+    border-bottom:1px solid #eaecf0;text-align:right;padding:7px 6px;
+  }
+  .deviation-table th:first-child,.deviation-table td:first-child{text-align:left}
+
+  .flow{
+    display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:9px;
+  }
+  .flow .node{
+    border:1px solid #d0d5dd;border-radius:10px;padding:8px 10px;background:#fafafa;font-weight:700;
+  }
+  .flow .arrow{color:#98a2b3;font-weight:800}
+  .foot{
+    margin-top:8px;color:var(--muted);font-size:13px;line-height:1.5;
+  }
+
+  details{
+    margin-top:12px;
+    border:1px solid #e4e7ec;border-radius:12px;padding:10px 12px;background:#fff;
+  }
+  summary{cursor:pointer;color:#344054;font-weight:650}
+  .values{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px;
+    color:var(--muted);font-size:13px;
+  }
+  .values code{
+    display:block;background:#f8fafc;border:1px solid #eaecf0;border-radius:10px;
+    padding:10px;color:#344054;line-height:1.6;white-space:normal;
+  }
+
+  @media (max-width:850px){
+    header{flex-direction:column}
+    .alpha{align-self:flex-start}
+    .grid{grid-template-columns:1fr}
+    .groups{grid-template-columns:1fr}
+    .notation{grid-template-columns:repeat(2,1fr)}
+    .calc-row{grid-template-columns:1fr}
+    .dynamic-boxes{grid-template-columns:repeat(2,1fr)}
+    .values{grid-template-columns:1fr}
+    #plot{height:350px}
+  }
+</style>
+</head>
+<body>
+<main class="wrap">
+
+  <header>
+    <div>
+      <h1>Simulador ANOVA d’un factor</h1>
+      <p class="subtitle">Explora què passa quan canvien la separació entre les mitjanes i la dispersió dins dels grups.</p>
+    </div>
+    <label class="alpha" for="alphaSelect">
+      <span>Nivell de significació</span>
+      <select id="alphaSelect" aria-label="Nivell de significació alfa">
+        <option value="0.10">α = 0,10</option>
+        <option value="0.05" selected>α = 0,05</option>
+        <option value="0.01">α = 0,01</option>
+        <option value="0.001">α = 0,001</option>
+      </select>
+    </label>
+  </header>
+
+  <div class="idea">
+    <strong>Idea clau:</strong> ANOVA compara la variabilitat <strong>entre grups</strong> amb la variabilitat <strong>dins dels grups</strong>.
+    Si la primera és molt més gran que la segona, augmenta <strong>F</strong> i disminueix el <strong>valor p</strong>.
+  </div>
+
+  <section class="grid">
+    <div class="card">
+      <div class="card-head">
+        <h2>Dades simulades</h2>
+        <p>Cada punt és una observació. La línia curta marca la mitjana del grup i la línia discontínua, la mitjana global.</p>
+      </div>
+      <svg id="plot" viewBox="0 0 760 420" role="img" aria-label="Gràfic de punts de tres grups per a ANOVA"></svg>
+      <div class="legend">
+        <span><i class="dot" style="background:var(--a)"></i> Grup A</span>
+        <span><i class="dot" style="background:var(--b)"></i> Grup B</span>
+        <span><i class="dot" style="background:var(--c)"></i> Grup C</span>
+        <span><i class="dash"></i> Mitjana global</span>
+      </div>
+    </div>
+
+    <aside class="card side">
+      <div class="result">
+        <div class="label">Estadístic ANOVA</div>
+        <div class="big">F = <span id="fVal">—</span></div>
+      </div>
+
+      <div class="pair">
+        <div class="mini">
+          <div class="label">valor p</div>
+          <div class="v" id="pVal">—</div>
+        </div>
+        <div class="mini">
+          <div class="label">Mitjana global</div>
+          <div class="v" id="grandVal">—</div>
+        </div>
+      </div>
+
+      <div>
+        <div class="label" style="margin-bottom:7px">Mitjanes dels grups</div>
+        <div class="means-mini">
+          <div class="mean-mini"><div class="label">A</div><div class="v" id="meanStatA">—</div></div>
+          <div class="mean-mini"><div class="label">B</div><div class="v" id="meanStatB">—</div></div>
+          <div class="mean-mini"><div class="label">C</div><div class="v" id="meanStatC">—</div></div>
+        </div>
+      </div>
+
+      <div id="decision" class="decision nsig" aria-live="polite">
+        <strong>Conclusió</strong>
+        Ajusta les dades per veure el resultat.
+      </div>
+
+      <div>
+        <div class="label" style="margin-bottom:8px">Què està comparant F?</div>
+        <div class="bars">
+          <div class="bar-row">
+            <span>Entre grups</span>
+            <div class="track"><div id="betweenBar" class="fill"></div></div>
+            <strong id="betweenVal">—</strong>
+          </div>
+          <div class="bar-row">
+            <span>Dins dels grups</span>
+            <div class="track"><div id="withinBar" class="fill"></div></div>
+            <strong id="withinVal">—</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="foot">
+        Si <strong>p &lt; α</strong>, rebutgem H₀: hi ha evidència que <strong>almenys una mitjana</strong> és diferent.
+      </div>
+    </aside>
+  </section>
+
+  <section class="controls">
+    <div class="controls-top">
+      <h2>Modifica les dades</h2>
+      <div class="preset-row">
+        <button type="button" data-preset="similar">Mitjanes semblants</button>
+        <button type="button" data-preset="separated">Mitjanes separades</button>
+        <button type="button" data-preset="spread">Molta dispersió</button>
+        <button type="button" data-preset="reset">Restableix</button>
+      </div>
+    </div>
+
+    <div class="groups">
+      <div class="group">
+        <div class="group-title"><span>Grup A</span><span class="chip" style="background:var(--a)">A</span></div>
+        <div class="slider">
+          <label for="meanA">Centre del grup <output id="meanAOut">40</output></label>
+          <input id="meanA" type="range" min="10" max="90" step="1" value="40">
+        </div>
+        <div class="slider">
+          <label for="spreadA">Dispersió <output id="spreadAOut">4</output></label>
+          <input id="spreadA" type="range" min="0" max="15" step="0.5" value="4">
+        </div>
+      </div>
+      <div class="group">
+        <div class="group-title"><span>Grup B</span><span class="chip" style="background:var(--b)">B</span></div>
+        <div class="slider">
+          <label for="meanB">Centre del grup <output id="meanBOut">50</output></label>
+          <input id="meanB" type="range" min="10" max="90" step="1" value="50">
+        </div>
+        <div class="slider">
+          <label for="spreadB">Dispersió <output id="spreadBOut">4</output></label>
+          <input id="spreadB" type="range" min="0" max="15" step="0.5" value="4">
+        </div>
+      </div>
+      <div class="group">
+        <div class="group-title"><span>Grup C</span><span class="chip" style="background:var(--c)">C</span></div>
+        <div class="slider">
+          <label for="meanC">Centre del grup <output id="meanCOut">60</output></label>
+          <input id="meanC" type="range" min="10" max="90" step="1" value="60">
+        </div>
+        <div class="slider">
+          <label for="spreadC">Dispersió <output id="spreadCOut">4</output></label>
+          <input id="spreadC" type="range" min="0" max="15" step="0.5" value="4">
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <p class="subtitle" style="margin:0 0 14px;">
+    Els valors següents s’actualitzen automàticament amb les mateixes dades de la simulació.
+  </p>
+
+  <div class="notation">
+    <div class="box"><div class="sym">k</div><div class="txt">nombre de grups</div></div>
+    <div class="box"><div class="sym">N</div><div class="txt">nombre total d’observacions</div></div>
+    <div class="box"><div class="sym">n<sub>j</sub></div><div class="txt">observacions del grup j</div></div>
+    <div class="box"><div class="sym">x<sub>ij</sub></div><div class="txt">observació i del grup j</div></div>
+  </div>
+
+  <section class="calc-steps">
+
+    <div class="step">
+      <div class="step-title"><span class="num">1</span> Mitjanes</div>
+      <div class="calc-row">
+        <div class="eq">
+          x̄<sub>j</sub> =
+          <span class="frac"><span class="top"><span class="sum">Σ</span> x<sub>ij</sub></span><span class="bottom">n<sub>j</sub></span></span>
+          &nbsp;&nbsp;&nbsp;
+          x̄<sub>global</sub> =
+          <span class="frac"><span class="top"><span class="sum">Σ</span><span class="sum">Σ</span> x<sub>ij</sub></span><span class="bottom">N</span></span>
+        </div>
+        <div class="explain">Primer calculem la mitjana de cada grup i la mitjana conjunta de totes les observacions.</div>
+      </div>
+      <div class="dynamic-boxes">
+        <div class="dyn"><div class="k">x̄A</div><div class="v" id="btMeanA">—</div></div>
+        <div class="dyn"><div class="k">x̄B</div><div class="v" id="btMeanB">—</div></div>
+        <div class="dyn"><div class="k">x̄C</div><div class="v" id="btMeanC">—</div></div>
+        <div class="dyn"><div class="k">x̄global</div><div class="v" id="meanStatGrand">—</div></div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-title"><span class="num">2</span> Variabilitat entre grups</div>
+      <div class="calc-row">
+        <div class="eq">
+          SC<sub>entre</sub> =
+          <span class="sum">Σ</span>
+          n<sub>j</sub>(x̄<sub>j</sub> − x̄<sub>global</sub>)<sup>2</sup>
+        </div>
+        <div class="explain">Mesura quant s’allunyen les mitjanes dels grups de la mitjana global.</div>
+      </div>
+
+      <table class="deviation-table">
+        <thead><tr><th>Grup</th><th>x̄<sub>j</sub></th><th>x̄<sub>j</sub> − x̄<sub>global</sub></th><th>n<sub>j</sub>·(…)²</th></tr></thead>
+        <tbody>
+          <tr><td>A</td><td id="btMeanA2">—</td><td id="btDevA">—</td><td id="btContrA">—</td></tr>
+          <tr><td>B</td><td id="btMeanB2">—</td><td id="btDevB">—</td><td id="btContrB">—</td></tr>
+          <tr><td>C</td><td id="btMeanC2">—</td><td id="btDevC">—</td><td id="btContrC">—</td></tr>
+        </tbody>
+      </table>
+
+      <div class="dynamic-boxes">
+        <div class="dyn"><div class="k">SC entre</div><div class="v" id="ssbVal">—</div></div>
+        <div class="dyn"><div class="k">gl entre = k − 1</div><div class="v" id="dfbVal">—</div></div>
+        <div class="dyn"><div class="k">QM entre</div><div class="v" id="msbVal">—</div></div>
+        <div class="dyn"><div class="k">Interpretació</div><div class="v" style="font-size:13px">separació entre mitjanes</div></div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-title"><span class="num">3</span> Variabilitat dins dels grups</div>
+      <div class="calc-row">
+        <div class="eq">
+          SC<sub>dins</sub> =
+          <span class="sum">Σ</span><span class="sum">Σ</span>
+          (x<sub>ij</sub> − x̄<sub>j</sub>)<sup>2</sup>
+        </div>
+        <div class="explain">Mesura la dispersió de cada observació respecte de la mitjana del seu propi grup.</div>
+      </div>
+      <div class="dynamic-boxes">
+        <div class="dyn"><div class="k">SC dins</div><div class="v" id="sswVal">—</div></div>
+        <div class="dyn"><div class="k">gl dins = N − k</div><div class="v" id="dfwVal">—</div></div>
+        <div class="dyn"><div class="k">QM dins</div><div class="v" id="mswVal">—</div></div>
+        <div class="dyn"><div class="k">Interpretació</div><div class="v" style="font-size:13px">dispersió interna</div></div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-title"><span class="num">4</span> Estadístic F</div>
+      <div class="calc-row">
+        <div class="eq">
+          F =
+          <span class="frac"><span class="top">QM<sub>entre</sub></span><span class="bottom">QM<sub>dins</sub></span></span>
+          =
+          <strong id="fFormulaVal">—</strong>
+        </div>
+        <div class="explain">F compara la separació entre grups amb la variabilitat que ja existeix dins dels grups.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-title"><span class="num">5</span> De F al valor p i a la decisió</div>
+      <div class="calc-row">
+        <div>
+          <div class="eq">
+            p = P(F<sub>gl₁,gl₂</sub> ≥ F<sub>observat</sub>)
+          </div>
+          <div class="flow">
+            <span class="node">F</span><span class="arrow">→</span>
+            <span class="node">distribució F</span><span class="arrow">→</span>
+            <span class="node">valor p</span><span class="arrow">→</span>
+            <span class="node">comparació amb α</span>
+          </div>
+        </div>
+        <div class="explain">
+          El valor p és l’àrea de la cua dreta de la distribució F a partir del valor observat.
+          Per això, <strong>F per si sol no determina p</strong>: també calen els graus de llibertat.
+        </div>
+      </div>
+      <div class="foot" id="decisionCalc">—</div>
+    </div>
+
+  </section>
+
+  <details>
+    <summary>Veure les observacions concretes generades</summary>
+    <div class="values">
+      <code id="valsA"></code>
+      <code id="valsB"></code>
+      <code id="valsC"></code>
+    </div>
+  </details>
+
+</main>
+
+<script>
+
+(function(){
+  const root = document;
+  const ids = ["A","B","C"];
+  const colors = {A:"#2563eb", B:"#059669", C:"#dc2626"};
+  const offsets = [-1.30,-0.60,0,0.70,1.20];
+
+  function el(id){ return root.getElementById(id); }
+
+  function groupData(id){
+    const m = Number(el("mean"+id).value);
+    const s = Number(el("spread"+id).value);
+    return offsets.map(o => m + o*s);
+  }
+
+  function mean(a){ return a.reduce((x,y)=>x+y,0)/a.length; }
+
+  // Lanczos approximation for ln Gamma
+  function logGamma(z){
+    const c = [
+      0.99999999999980993,676.5203681218851,-1259.1392167224028,
+      771.32342877765313,-176.61502916214059,12.507343278686905,
+      -0.13857109526572012,9.984369578019571e-6,1.5056327351493116e-7
+    ];
+    if(z < 0.5){
+      return Math.log(Math.PI) - Math.log(Math.sin(Math.PI*z)) - logGamma(1-z);
+    }
+    z -= 1;
+    let x = c[0];
+    for(let i=1;i<c.length;i++) x += c[i]/(z+i);
+    const t = z + c.length - 1.5;
+    return 0.5*Math.log(2*Math.PI) + (z+0.5)*Math.log(t) - t + Math.log(x);
+  }
+
+  function betacf(a,b,x){
+    const MAXIT=200, EPS=3e-14, FPMIN=1e-300;
+    let qab=a+b, qap=a+1, qam=a-1;
+    let c=1, d=1-qab*x/qap;
+    if(Math.abs(d)<FPMIN) d=FPMIN;
+    d=1/d;
+    let h=d;
+    for(let m=1;m<=MAXIT;m++){
+      let m2=2*m;
+      let aa=m*(b-m)*x/((qam+m2)*(a+m2));
+      d=1+aa*d; if(Math.abs(d)<FPMIN) d=FPMIN;
+      c=1+aa/c; if(Math.abs(c)<FPMIN) c=FPMIN;
+      d=1/d; h*=d*c;
+      aa=-(a+m)*(qab+m)*x/((a+m2)*(qap+m2));
+      d=1+aa*d; if(Math.abs(d)<FPMIN) d=FPMIN;
+      c=1+aa/c; if(Math.abs(c)<FPMIN) c=FPMIN;
+      d=1/d;
+      const del=d*c; h*=del;
+      if(Math.abs(del-1)<EPS) break;
+    }
+    return h;
+  }
+
+  function regIncompleteBeta(x,a,b){
+    if(x<=0) return 0;
+    if(x>=1) return 1;
+    const bt = Math.exp(logGamma(a+b)-logGamma(a)-logGamma(b)+a*Math.log(x)+b*Math.log(1-x));
+    if(x < (a+1)/(a+b+2)) return bt*betacf(a,b,x)/a;
+    return 1 - bt*betacf(b,a,1-x)/b;
+  }
+
+  function fSurvival(F, d1, d2){
+    if(!isFinite(F)) return 0;
+    if(F < 0) return 1;
+    const x = (d1*F)/(d1*F+d2);
+    const cdf = regIncompleteBeta(x, d1/2, d2/2);
+    return Math.max(0, Math.min(1, 1-cdf));
+  }
+
+  function compute(groups){
+    const flat = groups.flat();
+    const grand = mean(flat);
+    const means = groups.map(mean);
+    const k = groups.length;
+    const N = flat.length;
+
+    let ssb=0, ssw=0;
+    groups.forEach((g,i)=>{
+      ssb += g.length * Math.pow(means[i]-grand,2);
+      g.forEach(x => ssw += Math.pow(x-means[i],2));
+    });
+
+    const dfb = k-1;
+    const dfw = N-k;
+    const msb = ssb/dfb;
+    const msw = ssw/dfw;
+
+    let F, p;
+    if(msw===0){
+      if(msb===0){ F=NaN; p=NaN; }
+      else { F=Infinity; p=0; }
+    } else {
+      F = msb/msw;
+      p = fSurvival(F, dfb, dfw);
+    }
+    return {grand,means,ssb,ssw,dfb,dfw,msb,msw,F,p};
+  }
+
+  function fmt(x, digits=2){
+    if(Number.isNaN(x)) return "—";
+    if(!isFinite(x)) return "∞";
+    return x.toLocaleString("ca-ES",{minimumFractionDigits:digits,maximumFractionDigits:digits});
+  }
+  function fmtP(p){
+    if(Number.isNaN(p)) return "—";
+    if(p < 0.001) return "< 0,001";
+    return p.toLocaleString("ca-ES",{minimumFractionDigits:3,maximumFractionDigits:3});
+  }
+
+  function draw(groups, stats){
+    const svg=el("plot");
+    svg.innerHTML="";
+    const W=760,H=420, L=74,R=26,T=24,B=58;
+    const all=groups.flat();
+    let ymin=Math.min(...all), ymax=Math.max(...all);
+    const pad=Math.max(5,(ymax-ymin)*0.18);
+    ymin=Math.max(0,ymin-pad); ymax=Math.min(100,ymax+pad);
+    if(ymax-ymin<10){ const mid=(ymax+ymin)/2; ymin=mid-5; ymax=mid+5; }
+
+    const ns="http://www.w3.org/2000/svg";
+    const mk=(name,attrs={})=>{
+      const n=document.createElementNS(ns,name);
+      for(const [k,v] of Object.entries(attrs)) n.setAttribute(k,v);
+      return n;
+    };
+    const y = v => T + (ymax-v)*(H-T-B)/(ymax-ymin);
+    const xs=[180,380,580];
+
+    // horizontal grid
+    const ticks=5;
+    for(let i=0;i<=ticks;i++){
+      const val=ymin+(ymax-ymin)*i/ticks;
+      const yy=y(val);
+      svg.appendChild(mk("line",{x1:L,x2:W-R,y1:yy,y2:yy,stroke:"#eef2f6","stroke-width":"1"}));
+      const tx=mk("text",{x:L-12,y:yy+4,"text-anchor":"end",fill:"#667085","font-size":"12"});
+      tx.textContent=val.toFixed(0);
+      svg.appendChild(tx);
+    }
+
+    // grand mean
+    const gy=y(stats.grand);
+    svg.appendChild(mk("line",{x1:L,x2:W-R,y1:gy,y2:gy,stroke:"#7f8c8d","stroke-width":"2","stroke-dasharray":"7 6"}));
+
+    ids.forEach((id,idx)=>{
+      const x=xs[idx], col=colors[id];
+      // group mean line
+      const my=y(stats.means[idx]);
+      svg.appendChild(mk("line",{x1:x-48,x2:x+48,y1:my,y2:my,stroke:col,"stroke-width":"5","stroke-linecap":"round"}));
+
+      // points with small fixed horizontal jitter
+      const jitter=[-24,-12,0,12,24];
+      groups[idx].forEach((v,j)=>{
+        svg.appendChild(mk("circle",{cx:x+jitter[j],cy:y(v),r:"7",fill:col,opacity:".88",stroke:"#fff","stroke-width":"2"}));
+      });
+
+      const lab=mk("text",{x,y:H-25,"text-anchor":"middle",fill:"#344054","font-size":"15","font-weight":"700"});
+      lab.textContent="Grup "+id;
+      svg.appendChild(lab);
+    });
+
+    // y label
+    const yl=mk("text",{x:18,y:(T+H-B)/2,transform:`rotate(-90 18 ${(T+H-B)/2})`,"text-anchor":"middle",fill:"#667085","font-size":"12"});
+    yl.textContent="Valor observat";
+    svg.appendChild(yl);
+  }
+
+  function update(){
+    ids.forEach(id=>{
+      el("mean"+id+"Out").textContent = Number(el("mean"+id).value).toLocaleString("ca-ES");
+      el("spread"+id+"Out").textContent = Number(el("spread"+id).value).toLocaleString("ca-ES");
+    });
+
+    const groups=ids.map(groupData);
+    const s=compute(groups);
+
+    el("fVal").textContent=fmt(s.F,2);
+    el("pVal").textContent=fmtP(s.p);
+    el("grandVal").textContent=fmt(s.grand,1);
+
+    // Valors pedagògics del càlcul ANOVA
+    ids.forEach((id,i)=>{
+      el("meanStat"+id).textContent = fmt(s.means[i],2);
+      el("btMean"+id).textContent = fmt(s.means[i],2);
+      const twin = el("btMean"+id+"2");
+      if(twin) twin.textContent = fmt(s.means[i],2);
+      const dev = s.means[i] - s.grand;
+      el("btDev"+id).textContent = fmt(dev,2);
+      el("btContr"+id).textContent = fmt(groups[i].length * dev * dev,2);
+    });
+    el("meanStatGrand").textContent = fmt(s.grand,2);
+    el("ssbVal").textContent = fmt(s.ssb,2);
+    el("sswVal").textContent = fmt(s.ssw,2);
+    el("dfbVal").textContent = String(s.dfb);
+    el("dfwVal").textContent = String(s.dfw);
+    el("msbVal").textContent = fmt(s.msb,2);
+    el("mswVal").textContent = fmt(s.msw,2);
+    el("fFormulaVal").textContent = fmt(s.F,2);
+
+    ids.forEach((id,i)=>{
+      el("vals"+id).textContent="Grup "+id+": "+groups[i].map(v=>fmt(v,1)).join(" · ");
+    });
+
+    const maxv=Math.max(s.msb||0,s.msw||0,1e-9);
+    el("betweenBar").style.width=(100*(s.msb||0)/maxv)+"%";
+    el("withinBar").style.width=(100*(s.msw||0)/maxv)+"%";
+    el("betweenVal").textContent=fmt(s.msb,1);
+    el("withinVal").textContent=fmt(s.msw,1);
+
+    const alpha = Number(el("alphaSelect").value);
+    const alphaTxt = alpha.toLocaleString("ca-ES", {minimumFractionDigits: alpha < 0.01 ? 3 : 2, maximumFractionDigits: 3});
+    const d=el("decision");
+    if(Number.isNaN(s.p)){
+      d.className="decision nsig";
+      d.innerHTML="<strong>Conclusió</strong>No hi ha variabilitat suficient per calcular ANOVA.";
+    } else if(s.p < alpha){
+      d.className="decision sig";
+      d.innerHTML="<strong>p &lt; α ("+alphaTxt+") → rebutgem H₀</strong>Hi ha evidència que almenys una de les mitjanes poblacionals és diferent.";
+    } else {
+      d.className="decision nsig";
+      d.innerHTML="<strong>p ≥ α ("+alphaTxt+") → no rebutgem H₀</strong>No tenim evidència suficient per afirmar que les mitjanes poblacionals siguen diferents.";
+    }
+
+    const decCalc = el("decisionCalc");
+    if(Number.isNaN(s.p)){
+      decCalc.textContent = "No es pot obtenir un valor p amb aquesta configuració.";
+    } else if(s.p < alpha){
+      decCalc.innerHTML = "p = <strong>"+fmtP(s.p)+"</strong> &lt; α = <strong>"+alphaTxt+"</strong> → <strong>rebutgem H₀</strong>.";
+    } else {
+      decCalc.innerHTML = "p = <strong>"+fmtP(s.p)+"</strong> ≥ α = <strong>"+alphaTxt+"</strong> → <strong>no rebutgem H₀</strong>.";
+    }
+
+    draw(groups,s);
+  }
+
+  const presets={
+    reset:{m:[40,50,60],s:[4,4,4]},
+    similar:{m:[48,50,52],s:[5,5,5]},
+    separated:{m:[30,50,70],s:[3,3,3]},
+    spread:{m:[40,50,60],s:[12,12,12]}
+  };
+
+  document.querySelectorAll('input[type="range"]').forEach(x=>x.addEventListener("input",update));
+  el("alphaSelect").addEventListener("change", update);
+  document.querySelectorAll("button[data-preset]").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      const p=presets[btn.dataset.preset];
+      ids.forEach((id,i)=>{
+        el("mean"+id).value=p.m[i];
+        el("spread"+id).value=p.s[i];
+      });
+      update();
+    });
+  });
+
+  update();
+})();
+
+</script>
+</body>
+</html>
